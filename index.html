@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
-<title>RunReady — Vandaag</title>
+<title>RunReady</title>
 <style>
   :root {
     --bg: #0f172a;
@@ -19,6 +19,8 @@
     --red: #f87171;
     --blue: #60a5fa;
     --teal: #2dd4bf;
+    --purple: #a78bfa;
+    --pink: #f472b6;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -26,7 +28,7 @@
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
-    padding: env(safe-area-inset-top) 16px 32px 16px;
+    padding: env(safe-area-inset-top) 16px 90px 16px;
   }
   .container { max-width: 480px; margin: 0 auto; }
   header {
@@ -87,12 +89,8 @@
     padding: 2px 8px; border-radius: 20px; margin-bottom: 6px;
     text-transform: uppercase; letter-spacing: 0.05em;
   }
-  .planned .tag.done {
-    background: rgba(52,211,153,0.18); color: var(--green);
-  }
-  .planned .tag.light {
-    background: rgba(148,163,184,0.18); color: var(--muted);
-  }
+  .planned .tag.done { background: rgba(52,211,153,0.18); color: var(--green); }
+  .planned .tag.light { background: rgba(148,163,184,0.18); color: var(--muted); }
   .planned .wname { font-weight: 600; }
   .planned .wdesc { color: var(--muted); font-size: 0.8rem; margin-top: 4px; white-space: pre-line; }
   .planned .wstats { color: var(--muted); font-size: 0.8rem; margin-top: 4px; }
@@ -106,6 +104,67 @@
     position: relative; overflow: hidden;
   }
   .loadbar .fill { height: 100%; border-radius: 4px; }
+  /* Week: load chart */
+  .weektotal { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .weektotal .big { font-size: 1.7rem; font-weight: 700; }
+  .weektotal .delta { font-size: 0.85rem; font-weight: 600; }
+  .weektotal .sub { font-size: 0.75rem; color: var(--muted); }
+  .barchart {
+    display: flex; align-items: flex-end; gap: 6px;
+    height: 130px; margin-top: 16px;
+  }
+  .barcol { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+  .barstack { display: flex; flex-direction: column-reverse; width: 100%; border-radius: 4px 4px 0 0; overflow: hidden; }
+  .barseg { width: 100%; }
+  .barday { text-align: center; font-size: 0.68rem; color: var(--muted); margin-top: 6px; }
+  .barday.today { color: var(--text); font-weight: 700; }
+  .barval { text-align: center; font-size: 0.65rem; color: var(--muted); margin-bottom: 4px; min-height: 0.9em; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 14px; }
+  .legend .item { display: flex; align-items: center; font-size: 0.75rem; color: var(--muted); }
+  .legend .sw { width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+  /* Week: trend rows */
+  .trend {
+    display: flex; align-items: center; padding: 12px 0;
+    border-bottom: 1px solid rgba(148,163,184,0.12); gap: 12px;
+  }
+  .trend:last-child { border-bottom: none; padding-bottom: 0; }
+  .trend .tinfo { flex: 1; min-width: 0; }
+  .trend .tname { font-size: 0.9rem; font-weight: 600; }
+  .trend .tsub { font-size: 0.73rem; color: var(--muted); margin-top: 2px; }
+  .trend .spark { width: 90px; height: 30px; flex-shrink: 0; }
+  .trend .tvals { text-align: right; flex-shrink: 0; min-width: 70px; }
+  .trend .tnow { font-size: 1rem; font-weight: 700; }
+  .trend .tdelta { font-size: 0.73rem; font-weight: 600; margin-top: 2px; }
+  /* Week: runs */
+  .run { padding: 12px 0; border-bottom: 1px solid rgba(148,163,184,0.12); }
+  .run:last-child { border-bottom: none; padding-bottom: 0; }
+  .run .rtop { display: flex; justify-content: space-between; align-items: baseline; }
+  .run .rname { font-weight: 600; font-size: 0.9rem; }
+  .run .rdate { font-size: 0.72rem; color: var(--muted); text-transform: capitalize; }
+  .run .rstats { display: flex; gap: 14px; margin-top: 6px; flex-wrap: wrap; }
+  .run .rstat { font-size: 0.8rem; color: #cbd5e1; }
+  .run .rstat b { color: var(--text); }
+  .run .rstat small { color: var(--muted); }
+  .zonebar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; background: var(--card2); }
+  .zonebar .z { height: 100%; }
+  .zonelabel { font-size: 0.68rem; color: var(--muted); margin-top: 5px; }
+  .empty { color: var(--muted); font-size: 0.85rem; padding: 6px 0; }
+  /* Tabs */
+  .tabbar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(15,23,42,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(148,163,184,0.15);
+    display: flex; justify-content: center; gap: 8px;
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom)) 16px;
+    z-index: 10;
+  }
+  .tabbar button {
+    flex: 1; max-width: 160px; background: none; border: none;
+    color: var(--muted); font-size: 0.8rem; font-weight: 600;
+    padding: 10px 0; border-radius: 12px; cursor: pointer;
+  }
+  .tabbar button.active { color: var(--teal); background: rgba(45,212,191,0.1); }
+  .tabbar button .ticon { display: block; font-size: 1.15rem; margin-bottom: 2px; }
   /* Setup */
   .setup input {
     width: 100%; padding: 13px 14px; border-radius: 10px; border: 1px solid #334155;
@@ -119,7 +178,6 @@
   }
   .btn.secondary { background: var(--card2); color: var(--text); margin-top: 10px; font-weight: 600; }
   .hint { font-size: 0.78rem; color: var(--muted); line-height: 1.5; margin-top: 14px; }
-  .hint a { color: var(--teal); }
   .error {
     background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.4);
     border-radius: 12px; padding: 14px; font-size: 0.85rem; line-height: 1.5;
@@ -142,7 +200,7 @@
 <div class="container">
   <header>
     <div>
-      <h1>Vandaag</h1>
+      <h1 id="pageTitle">Vandaag</h1>
       <div class="date" id="dateLabel"></div>
     </div>
     <div>
@@ -168,29 +226,20 @@
     </div>
   </div>
 
-  <!-- MAIN -->
-  <div id="mainView" class="hidden">
-    <div id="demoBanner" class="demo-banner hidden">
-      Voorbeelddata — nog niet gekoppeld
-      <button id="demoToggle">wissel scenario</button>
-    </div>
-    <div id="errorBox" class="error hidden"></div>
+  <div id="demoBanner" class="demo-banner hidden">
+    Voorbeelddata — nog niet gekoppeld
+    <button id="demoToggle">wissel scenario</button>
+  </div>
+  <div id="errorBox" class="error hidden"></div>
 
+  <!-- PAGINA 1: VANDAAG -->
+  <div id="todayView" class="hidden">
     <div class="card">
       <h2>Vorm &amp; belasting</h2>
       <div class="fff">
-        <div class="metric">
-          <div class="value" id="ctlVal">–</div>
-          <div class="label">Fitness (CTL)</div>
-        </div>
-        <div class="metric">
-          <div class="value" id="atlVal">–</div>
-          <div class="label">Vermoeidheid (ATL)</div>
-        </div>
-        <div class="metric">
-          <div class="value" id="tsbVal">–</div>
-          <div class="label">Vorm (TSB)</div>
-        </div>
+        <div class="metric"><div class="value" id="ctlVal">–</div><div class="label">Fitness (CTL)</div></div>
+        <div class="metric"><div class="value" id="atlVal">–</div><div class="label">Vermoeidheid (ATL)</div></div>
+        <div class="metric"><div class="value" id="tsbVal">–</div><div class="label">Vorm (TSB)</div></div>
       </div>
       <div class="interpret" id="fffInterpret"></div>
     </div>
@@ -210,8 +259,38 @@
     </div>
   </div>
 
+  <!-- PAGINA 2: WEEK -->
+  <div id="weekView" class="hidden">
+    <div class="card">
+      <h2>Trainingsload deze week</h2>
+      <div class="weektotal">
+        <span class="big" id="weekTotal">–</span>
+        <span class="delta" id="weekDelta"></span>
+      </div>
+      <div class="sub weektotal"><span class="sub" id="weekSub"></span></div>
+      <div class="barchart" id="loadChart"></div>
+      <div class="legend" id="loadLegend"></div>
+    </div>
+
+    <div class="card">
+      <h2>Herstel: deze week vs. vorige week</h2>
+      <div id="trendRows"></div>
+    </div>
+
+    <div class="card">
+      <h2>Loopjes deze week</h2>
+      <div id="runList"></div>
+    </div>
+  </div>
+
   <div id="loadingView" class="loading hidden">Gegevens laden…</div>
 </div>
+
+<!-- TABS -->
+<nav class="tabbar" id="tabbar">
+  <button data-tab="today" class="active"><span class="ticon">&#9737;</span>Vandaag</button>
+  <button data-tab="week"><span class="ticon">&#9776;</span>Week</button>
+</nav>
 
 <script>
 (function () {
@@ -224,15 +303,36 @@
   function fmt(d) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
+  function addDays(d, n) { return new Date(d.getTime() + n * 86400000); }
   var today = new Date();
   var todayStr = fmt(today);
+  var dow = (today.getDay() + 6) % 7; // 0 = maandag
+  var monday = addDays(today, -dow);
+  var prevMonday = addDays(monday, -7);
   document.getElementById('dateLabel').textContent =
     today.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
 
+  // ---------- App state ----------
+  var state = { wellness: null, events: null, activities: null, isDemo: false, tab: 'today' };
+  var demoScenario = 0;
+
   // ---------- Views ----------
-  var views = ['setupView', 'mainView', 'loadingView'];
-  function show(id) {
-    views.forEach(function (v) { document.getElementById(v).classList.toggle('hidden', v !== id); });
+  function showView(id) {
+    ['setupView', 'todayView', 'weekView', 'loadingView'].forEach(function (v) {
+      document.getElementById(v).classList.toggle('hidden', v !== id);
+    });
+    document.getElementById('tabbar').style.display = (id === 'setupView' || id === 'loadingView') ? 'none' : 'flex';
+  }
+  function setTab(tab) {
+    state.tab = tab;
+    document.querySelectorAll('.tabbar button').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+    });
+    document.getElementById('pageTitle').textContent = tab === 'today' ? 'Vandaag' : 'Weektrends';
+    if (state.wellness) {
+      showView(tab === 'today' ? 'todayView' : 'weekView');
+      if (tab === 'today') renderToday(); else renderWeek();
+    }
   }
 
   // ---------- API ----------
@@ -248,40 +348,42 @@
   }
 
   function loadData() {
-    show('loadingView');
-    var oldest = fmt(new Date(today.getTime() - 45 * 86400000));
-    var tomorrow = fmt(new Date(today.getTime() + 86400000));
+    showView('loadingView');
+    var oldestW = fmt(addDays(today, -45));
+    var oldestA = fmt(prevMonday); // vanaf begin vorige week
+    var tomorrow = fmt(addDays(today, 1));
     Promise.all([
-      apiGet('/wellness?oldest=' + oldest + '&newest=' + todayStr),
+      apiGet('/wellness?oldest=' + oldestW + '&newest=' + todayStr),
       apiGet('/events?oldest=' + todayStr + '&newest=' + todayStr),
-      apiGet('/activities?oldest=' + todayStr + '&newest=' + tomorrow)
+      apiGet('/activities?oldest=' + oldestA + '&newest=' + tomorrow)
     ]).then(function (res) {
-      render(res[0], res[1], res[2], false);
+      state.wellness = res[0]; state.events = res[1]; state.activities = res[2]; state.isDemo = false;
+      document.getElementById('errorBox').classList.add('hidden');
+      document.getElementById('demoBanner').classList.add('hidden');
+      setTab(state.tab);
     }).catch(function (err) {
-      show('mainView');
+      showView(state.tab === 'today' ? 'todayView' : 'weekView');
       var box = document.getElementById('errorBox');
       box.classList.remove('hidden');
       var msg = 'Kon geen verbinding maken met intervals.icu (' + err.message + '). ';
       if (String(err.message).indexOf('401') >= 0 || String(err.message).indexOf('403') >= 0) {
         msg += 'Controleer je Athlete ID en API-key via het tandwiel rechtsboven.';
       } else {
-        msg += 'Mogelijk blokkeert deze omgeving het verzoek (CORS/sandbox). Host het bestand zelf of open het lokaal in Safari; werkt het dan nog niet, dan zetten we er een gratis Cloudflare Worker tussen.';
+        msg += 'Mogelijk blokkeert deze omgeving het verzoek (CORS/sandbox). Host het bestand zelf of open het lokaal in Safari.';
       }
       box.textContent = msg;
-      document.querySelectorAll('#mainView .card').forEach(function (c) { c.classList.add('hidden'); });
+      document.querySelectorAll('#todayView .card, #weekView .card').forEach(function (c) { c.classList.add('hidden'); });
     });
   }
 
   // ---------- Helpers ----------
   function avg(arr) { return arr.length ? arr.reduce(function (a, b) { return a + b; }, 0) / arr.length : null; }
-
   function baseline(records, field, excludeDate) {
     var vals = records
       .filter(function (r) { return r.id !== excludeDate && r[field] != null && r[field] > 0; })
       .slice(-30).map(function (r) { return r[field]; });
     return vals.length >= 5 ? avg(vals) : null;
   }
-
   function hm(secs) {
     var h = Math.floor(secs / 3600), m = Math.round((secs % 3600) / 60);
     return h + 'u' + String(m).padStart(2, '0');
@@ -294,8 +396,17 @@
   function km(meters) {
     return meters != null && meters > 0 ? (meters / 1000).toFixed(1).replace('.', ',') + ' km' : '';
   }
+  function paceStr(secsPerKm) {
+    if (!secsPerKm || !isFinite(secsPerKm)) return '–';
+    var m = Math.floor(secsPerKm / 60), s = Math.round(secsPerKm % 60);
+    if (s === 60) { m += 1; s = 0; }
+    return m + ':' + String(s).padStart(2, '0');
+  }
+  function actDate(a) {
+    var d = a.start_date_local || a.start_date || '';
+    return String(d).slice(0, 10);
+  }
 
-  // Load schatten als intervals.icu er geen heeft berekend (bijv. wandeling zonder HR)
   var loadPerHour = {
     'Walk': 15, 'Hike': 25, 'Yoga': 15, 'Ride': 45, 'VirtualRide': 45,
     'Run': 60, 'VirtualRun': 60, 'WeightTraining': 35, 'Workout': 40, 'Swim': 50
@@ -311,21 +422,41 @@
   }
 
   var typeNames = {
-    'Walk': 'Wandeling', 'Hike': 'Hike', 'Ride': 'Fietsrit', 'VirtualRide': 'Fietsrit (indoor)',
-    'Run': 'Hardlopen', 'VirtualRun': 'Hardlopen (indoor)', 'WeightTraining': 'Kracht',
-    'Workout': 'Workout', 'Yoga': 'Yoga', 'Swim': 'Zwemmen'
+    'Walk': 'Wandelen', 'Hike': 'Hike', 'Ride': 'Fietsen', 'VirtualRide': 'Fietsen',
+    'Run': 'Hardlopen', 'VirtualRun': 'Hardlopen', 'WeightTraining': 'Kracht',
+    'Workout': 'Crossfit/Workout', 'Yoga': 'Yoga', 'Swim': 'Zwemmen'
   };
+  var typeColors = {
+    'Hardlopen': 'var(--blue)', 'Kracht': 'var(--purple)', 'Crossfit/Workout': 'var(--orange)',
+    'Fietsen': 'var(--teal)', 'Wandelen': '#64748b', 'Hike': '#64748b',
+    'Zwemmen': 'var(--pink)', 'Yoga': '#94a3b8', 'Overig': 'var(--pink)'
+  };
+  function typeGroup(a) { return typeNames[a.type] || 'Overig'; }
 
-  // ---------- Rendering ----------
-  function render(wellness, events, activities, isDemo) {
-    show('mainView');
-    document.getElementById('errorBox').classList.add('hidden');
-    document.querySelectorAll('#mainView .card').forEach(function (c) { c.classList.remove('hidden'); });
-    document.getElementById('demoBanner').classList.toggle('hidden', !isDemo);
+  var zoneColors = ['#64748b', '#34d399', '#fbbf24', '#fb923c', '#f87171', '#a78bfa', '#f472b6'];
 
+  // Zone-tijden robuust uitlezen (array van secs, of array van {id, secs})
+  function zoneSecs(field) {
+    if (!field) return null;
+    if (Array.isArray(field)) {
+      if (!field.length) return null;
+      if (typeof field[0] === 'number') return field;
+      if (typeof field[0] === 'object' && field[0] !== null && 'secs' in field[0]) {
+        return field.map(function (z) { return z.secs || 0; });
+      }
+    }
+    return null;
+  }
+
+  // =================================================
+  // PAGINA 1: VANDAAG
+  // =================================================
+  function renderToday() {
+    var wellness = state.wellness.slice(), events = state.events, activities = state.activities;
+    document.querySelectorAll('#todayView .card').forEach(function (c) { c.classList.remove('hidden'); });
+    document.getElementById('demoBanner').classList.toggle('hidden', !state.isDemo);
     wellness.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
 
-    // --- CTL / ATL / TSB ---
     var latest = null;
     for (var i = wellness.length - 1; i >= 0; i--) {
       if (wellness[i].ctl != null) { latest = wellness[i]; break; }
@@ -352,22 +483,18 @@
     interp.style.borderLeftColor = tsbColor;
     interp.textContent = tsbText;
 
-    // --- Readiness ---
     var todayRec = null;
     wellness.forEach(function (r) { if (r.id === todayStr) todayRec = r; });
 
-    var flags = 0;
-    var sigHtml = '';
+    var flags = 0, sigHtml = '';
     function addSignal(name, todayVal, baseVal, status, note) {
       var color = status === 'ok' ? 'var(--green)' : status === 'warn' ? 'var(--orange)' : status === 'bad' ? 'var(--red)' : 'var(--muted)';
-      sigHtml += '<div class="signal">' +
-        '<span class="dot" style="background:' + color + '"></span>' +
+      sigHtml += '<div class="signal"><span class="dot" style="background:' + color + '"></span>' +
         '<span class="name">' + name + (note ? '<small>' + note + '</small>' : '') + '</span>' +
         '<span class="vals"><div class="today-val">' + todayVal + '</div>' +
         '<div class="base-val">' + baseVal + '</div></span></div>';
     }
 
-    // HRV
     var hrvBase = baseline(wellness, 'hrv', todayStr);
     var hrvToday = todayRec && todayRec.hrv ? todayRec.hrv : null;
     if (hrvToday != null && hrvBase != null) {
@@ -381,7 +508,6 @@
       addSignal('HRV', '–', hrvBase ? 'baseline ' + Math.round(hrvBase) + ' ms' : 'onvoldoende data', 'none', 'geen meting vandaag');
     }
 
-    // Rusthartslag
     var rhrBase = baseline(wellness, 'restingHR', todayStr);
     var rhrToday = todayRec && todayRec.restingHR ? todayRec.restingHR : null;
     if (rhrToday != null && rhrBase != null) {
@@ -395,7 +521,6 @@
       addSignal('Rusthartslag', '–', rhrBase ? 'baseline ' + Math.round(rhrBase) + ' bpm' : 'onvoldoende data', 'none', 'geen meting vandaag');
     }
 
-    // Slaap
     var slBase = baseline(wellness, 'sleepSecs', todayStr);
     var slToday = todayRec && todayRec.sleepSecs ? todayRec.sleepSecs : null;
     if (slToday != null) {
@@ -407,47 +532,34 @@
     } else {
       addSignal('Slaap', '–', slBase ? 'gemiddeld ' + hm(slBase) : 'onvoldoende data', 'none', 'geen meting vandaag');
     }
-
     document.getElementById('signals').innerHTML = sigHtml;
 
-    // --- Voltooide activiteiten vandaag ---
-    var done = (activities || []).filter(function (a) {
-      var d = a.start_date_local || a.start_date || '';
-      return String(d).indexOf(todayStr) === 0;
-    });
-    var doneLoad = 0, anyEstimated = false;
+    // Voltooide activiteiten vandaag
+    var done = (activities || []).filter(function (a) { return actDate(a) === todayStr; });
+    var doneLoad = 0;
     done.forEach(function (a) {
       var l = activityLoad(a);
-      a._load = l.load;
-      a._estimated = l.estimated;
+      a._load = l.load; a._estimated = l.estimated;
       doneLoad += l.load;
-      if (l.estimated && l.load > 0) anyEstimated = true;
     });
 
-    // Drempels relatief aan je fitness (CTL = je gemiddelde dagelijkse load)
     var heavyT = ctl != null && ctl > 20 ? Math.round(ctl * 1.3) : 90;
     var modT = ctl != null && ctl > 20 ? Math.round(ctl * 0.6) : 40;
 
     var doneBox = document.getElementById('doneBox');
-    if (done.length) {
-      doneBox.innerHTML = done.map(function (a) {
-        var stats = [];
-        if (a.distance) stats.push(km(a.distance));
-        if (a.moving_time) stats.push(durShort(a.moving_time));
-        if (a._load > 0) stats.push('load ' + Math.round(a._load) + (a._estimated ? ' (geschat)' : ''));
-        if (a.average_heartrate || a.icu_average_hr) stats.push('gem. HR ' + Math.round(a.average_heartrate || a.icu_average_hr));
-        var isLight = a._load < modT * 0.6;
-        var typeName = typeNames[a.type] || a.type || 'activiteit';
-        return '<div class="planned"><span class="tag ' + (isLight ? 'light' : 'done') + '">&#10003; ' + typeName + '</span>' +
-          '<div class="wname">' + (a.name || 'Activiteit') + '</div>' +
-          (stats.length ? '<div class="wstats">' + stats.join(' &middot; ') + '</div>' : '') +
-          '</div>';
-      }).join('');
-    } else {
-      doneBox.innerHTML = '';
-    }
+    doneBox.innerHTML = done.map(function (a) {
+      var stats = [];
+      if (a.distance) stats.push(km(a.distance));
+      if (a.moving_time) stats.push(durShort(a.moving_time));
+      if (a._load > 0) stats.push('load ' + Math.round(a._load) + (a._estimated ? ' (geschat)' : ''));
+      if (a.average_heartrate || a.icu_average_hr) stats.push('gem. HR ' + Math.round(a.average_heartrate || a.icu_average_hr));
+      var isLight = a._load < modT * 0.6;
+      var typeName = typeNames[a.type] || a.type || 'activiteit';
+      return '<div class="planned"><span class="tag ' + (isLight ? 'light' : 'done') + '">&#10003; ' + typeName + '</span>' +
+        '<div class="wname">' + (a.name || 'Activiteit') + '</div>' +
+        (stats.length ? '<div class="wstats">' + stats.join(' &middot; ') + '</div>' : '') + '</div>';
+    }).join('');
 
-    // Belastingsbalkje: hoeveel van een "normale trainingsdag" zit erop?
     var loadbarBox = document.getElementById('loadbarBox');
     if (done.length && ctl != null && ctl > 20) {
       var pct = Math.min(100, Math.round(doneLoad / heavyT * 100));
@@ -461,10 +573,8 @@
       loadbarBox.innerHTML = '';
     }
 
-    // Heeft de "echte" training al plaatsgevonden, of alleen lichte activiteit?
     var trainedForReal = doneLoad >= modT;
 
-    // --- Geplande workout ---
     var planned = (events || []).filter(function (e) {
       return e.category === 'WORKOUT' || (e.category && e.category.indexOf('RACE') === 0);
     });
@@ -476,19 +586,16 @@
         var load = e.icu_training_load ? ' &middot; load ~' + e.icu_training_load : '';
         return '<div class="planned"><span class="tag">' + tag + '</span>' +
           '<div class="wname">' + (e.name || 'Workout') + load + '</div>' +
-          (e.description ? '<div class="wdesc">' + String(e.description).split('\n').slice(0, 4).join('\n') + '</div>' : '') +
-          '</div>';
+          (e.description ? '<div class="wdesc">' + String(e.description).split('\n').slice(0, 4).join('\n') + '</div>' : '') + '</div>';
       }).join('');
     } else {
       plannedBox.innerHTML = '';
     }
 
-    // --- Advies ---
     var head = '', text = '', color = 'var(--green)';
     document.getElementById('adviceTitle').textContent = trainedForReal ? 'Vandaag getraind' : 'Advies van de dag';
 
     if (trainedForReal) {
-      // Volwaardige training gedaan → hersteladvies
       if (doneLoad >= heavyT || (tsb != null && tsb < -20)) {
         color = 'var(--orange)';
         head = 'Training gedaan — focus nu op herstel';
@@ -502,7 +609,6 @@
         text += ' Let op: er staat vandaag ook nog een geplande workout in je agenda (' + (planned[0].name || 'workout') + '). Als dit dezelfde sessie was, kun je die negeren.';
       }
     } else {
-      // Nog niet (echt) getraind → normaal advies, eventueel met vermelding lichte activiteit
       var lightNote = done.length
         ? ' Je lichte activiteit van vandaag (load ' + Math.round(doneLoad) + ') telt mee, maar laat nog ruimte voor een echte training.'
         : '';
@@ -543,45 +649,241 @@
     document.getElementById('adviceText').textContent = text;
   }
 
-  // ---------- Demo data ----------
-  var demoScenario = 0; // 0 = niets, 1 = alleen wandeling, 2 = wandeling + intervaltraining
+  // =================================================
+  // PAGINA 2: WEEK
+  // =================================================
+  function sparkline(vals, color) {
+    var valid = vals.filter(function (v) { return v != null; });
+    if (valid.length < 2) return '<svg class="spark"></svg>';
+    var min = Math.min.apply(null, valid), max = Math.max.apply(null, valid);
+    var range = max - min || 1;
+    var pts = [];
+    vals.forEach(function (v, i) {
+      if (v == null) return;
+      var x = (i / (vals.length - 1)) * 88 + 1;
+      var y = 27 - ((v - min) / range) * 24;
+      pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+    });
+    return '<svg class="spark" viewBox="0 0 90 30" preserveAspectRatio="none">' +
+      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+
+  function renderWeek() {
+    var wellness = state.wellness.slice(), activities = state.activities || [];
+    document.querySelectorAll('#weekView .card').forEach(function (c) { c.classList.remove('hidden'); });
+    document.getElementById('demoBanner').classList.toggle('hidden', !state.isDemo);
+    wellness.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
+
+    var dayNames = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
+
+    // --- Load per dag, gestapeld per sporttype ---
+    var days = [];
+    for (var i = 0; i < 7; i++) {
+      days.push({ date: fmt(addDays(monday, i)), types: {}, total: 0 });
+    }
+    var thisWeekTotal = 0, prevWeekTotal = 0, prevWeekToDate = 0;
+    var typesSeen = {};
+    activities.forEach(function (a) {
+      var d = actDate(a);
+      var l = activityLoad(a).load;
+      if (d >= fmt(monday) && d <= todayStr) {
+        thisWeekTotal += l;
+        var idx = Math.round((new Date(d + 'T12:00:00') - monday) / 86400000);
+        if (idx >= 0 && idx < 7) {
+          var g = typeGroup(a);
+          days[idx].types[g] = (days[idx].types[g] || 0) + l;
+          days[idx].total += l;
+          typesSeen[g] = true;
+        }
+      } else if (d >= fmt(prevMonday) && d < fmt(monday)) {
+        prevWeekTotal += l;
+        var pidx = Math.round((new Date(d + 'T12:00:00') - prevMonday) / 86400000);
+        if (pidx <= dow) prevWeekToDate += l; // zelfde dagen als deze week tot nu
+      }
+    });
+
+    document.getElementById('weekTotal').textContent = Math.round(thisWeekTotal);
+    var deltaEl = document.getElementById('weekDelta');
+    if (prevWeekToDate > 0) {
+      var pctD = Math.round((thisWeekTotal - prevWeekToDate) / prevWeekToDate * 100);
+      deltaEl.textContent = (pctD >= 0 ? '+' : '') + pctD + '%';
+      deltaEl.style.color = pctD > 25 ? 'var(--orange)' : pctD >= -25 ? 'var(--muted)' : 'var(--blue)';
+    } else {
+      deltaEl.textContent = '';
+    }
+    document.getElementById('weekSub').textContent =
+      'totale load t/m vandaag · vorige week zelfde punt: ' + Math.round(prevWeekToDate) + ' · hele vorige week: ' + Math.round(prevWeekTotal);
+
+    var maxDay = Math.max.apply(null, days.map(function (d) { return d.total; }).concat([1]));
+    var chartHtml = '';
+    days.forEach(function (d, i) {
+      var isToday = d.date === todayStr;
+      var isFuture = d.date > todayStr;
+      var segs = '';
+      Object.keys(d.types).forEach(function (g) {
+        var h = Math.round(d.types[g] / maxDay * 100);
+        segs += '<div class="barseg" style="height:' + Math.max(h, 2) + 'px;background:' + (typeColors[g] || 'var(--pink)') + '"></div>';
+      });
+      chartHtml += '<div class="barcol">' +
+        '<div class="barval">' + (d.total > 0 ? Math.round(d.total) : '') + '</div>' +
+        '<div class="barstack" style="opacity:' + (isFuture ? 0.25 : 1) + '">' + segs + '</div>' +
+        '<div class="barday' + (isToday ? ' today' : '') + '">' + dayNames[i] + '</div></div>';
+    });
+    document.getElementById('loadChart').innerHTML = chartHtml;
+
+    var legendHtml = Object.keys(typesSeen).map(function (g) {
+      return '<span class="item"><span class="sw" style="background:' + (typeColors[g] || 'var(--pink)') + '"></span>' + g + '</span>';
+    }).join('');
+    document.getElementById('loadLegend').innerHTML = legendHtml || '<span class="item">Nog geen activiteiten deze week</span>';
+
+    // --- Hersteltrends: laatste 7 dagen vs. 7 dagen ervoor ---
+    var last14 = [];
+    for (var j = 13; j >= 0; j--) {
+      var ds = fmt(addDays(today, -j));
+      var rec = null;
+      wellness.forEach(function (r) { if (r.id === ds) rec = r; });
+      last14.push(rec || {});
+    }
+    function trendRow(name, field, unit, higherIsBetter, fmtFn) {
+      var thisW = last14.slice(7).map(function (r) { return r[field] > 0 ? r[field] : null; }).filter(function (v) { return v != null; });
+      var prevW = last14.slice(0, 7).map(function (r) { return r[field] > 0 ? r[field] : null; }).filter(function (v) { return v != null; });
+      var aNow = avg(thisW), aPrev = avg(prevW);
+      var sparkVals = last14.map(function (r) { return r[field] > 0 ? r[field] : null; });
+      var nowStr = aNow != null ? fmtFn(aNow) : '–';
+      var deltaStr = '', deltaColor = 'var(--muted)';
+      if (aNow != null && aPrev != null) {
+        var pct = (aNow - aPrev) / aPrev * 100;
+        var good = higherIsBetter ? pct >= 0 : pct <= 0;
+        deltaColor = Math.abs(pct) < 2 ? 'var(--muted)' : good ? 'var(--green)' : 'var(--orange)';
+        deltaStr = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '% vs. vorige week';
+      } else if (aNow != null) {
+        deltaStr = 'geen vergelijking';
+      }
+      return '<div class="trend">' +
+        '<div class="tinfo"><div class="tname">' + name + '</div>' +
+        '<div class="tsub">7-daags gemiddelde' + (aPrev != null ? ' · vorige week ' + fmtFn(aPrev) : '') + '</div></div>' +
+        sparkline(sparkVals, deltaColor === 'var(--orange)' ? 'var(--orange)' : 'var(--teal)') +
+        '<div class="tvals"><div class="tnow">' + nowStr + '</div>' +
+        '<div class="tdelta" style="color:' + deltaColor + '">' + deltaStr + '</div></div></div>';
+    }
+    document.getElementById('trendRows').innerHTML =
+      trendRow('HRV', 'hrv', 'ms', true, function (v) { return Math.round(v) + ' ms'; }) +
+      trendRow('Rusthartslag', 'restingHR', 'bpm', false, function (v) { return Math.round(v) + ' bpm'; }) +
+      trendRow('Slaap', 'sleepSecs', '', true, function (v) { return hm(v); });
+
+    // --- Loopjes deze week: vermogen, pace, zones ---
+    var runs = activities.filter(function (a) {
+      var d = actDate(a);
+      return (a.type === 'Run' || a.type === 'VirtualRun') && d >= fmt(monday) && d <= todayStr;
+    }).sort(function (a, b) { return actDate(a) < actDate(b) ? 1 : -1; });
+
+    var runHtml = runs.map(function (a) {
+      var dateLabel = new Date(actDate(a) + 'T12:00:00')
+        .toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+      var pace = a.distance && a.moving_time ? a.moving_time / (a.distance / 1000) : null;
+      var watts = a.icu_average_watts || a.average_watts || null;
+      var stats = '';
+      if (a.distance) stats += '<span class="rstat"><b>' + km(a.distance) + '</b></span>';
+      if (pace) stats += '<span class="rstat"><b>' + paceStr(pace) + '</b> <small>/km</small></span>';
+      if (watts) stats += '<span class="rstat"><b>' + Math.round(watts) + '</b> <small>W</small></span>';
+      if (a.average_heartrate || a.icu_average_hr) stats += '<span class="rstat"><b>' + Math.round(a.average_heartrate || a.icu_average_hr) + '</b> <small>bpm</small></span>';
+      var l = activityLoad(a);
+      stats += '<span class="rstat"><b>' + Math.round(l.load) + '</b> <small>load</small></span>';
+
+      // Zones: eerst vermogenszones (Stryd), anders pace-zones, anders HR-zones
+      var zones = zoneSecs(a.icu_zone_times);
+      var zoneSource = 'vermogenszones';
+      if (!zones) { zones = zoneSecs(a.pace_zone_times); zoneSource = 'pace-zones'; }
+      if (!zones) { zones = zoneSecs(a.icu_hr_zone_times); zoneSource = 'hartslagzones'; }
+      var zoneHtml = '';
+      if (zones) {
+        var totZ = zones.reduce(function (s, v) { return s + v; }, 0);
+        if (totZ > 0) {
+          var segs = '';
+          zones.forEach(function (secs, zi) {
+            if (secs <= 0) return;
+            var w = (secs / totZ * 100).toFixed(1);
+            segs += '<div class="z" style="width:' + w + '%;background:' + zoneColors[Math.min(zi, zoneColors.length - 1)] + '"></div>';
+          });
+          var domIdx = zones.indexOf(Math.max.apply(null, zones));
+          zoneHtml = '<div class="zonebar">' + segs + '</div>' +
+            '<div class="zonelabel">' + zoneSource + ' · meeste tijd in Z' + (domIdx + 1) +
+            ' (' + Math.round(zones[domIdx] / totZ * 100) + '%)</div>';
+        }
+      }
+
+      return '<div class="run"><div class="rtop">' +
+        '<span class="rname">' + (a.name || 'Hardlopen') + '</span>' +
+        '<span class="rdate">' + dateLabel + '</span></div>' +
+        '<div class="rstats">' + stats + '</div>' + zoneHtml + '</div>';
+    }).join('');
+
+    document.getElementById('runList').innerHTML = runHtml ||
+      '<div class="empty">Nog geen loopjes deze week.</div>';
+  }
+
+  // =================================================
+  // DEMO DATA
+  // =================================================
   function demoData() {
     var w = [];
     for (var i = 44; i >= 0; i--) {
-      var d = new Date(today.getTime() - i * 86400000);
+      var d = addDays(today, -i);
       w.push({
         id: fmt(d),
         ctl: 42 + (44 - i) * 0.25 + Math.sin(i) * 1.5,
         atl: 48 + Math.sin(i / 2) * 8 + (44 - i) * 0.2,
-        hrv: 62 + Math.round(Math.sin(i * 1.3) * 6),
-        restingHR: 48 + Math.round(Math.sin(i * 0.7) * 2),
+        hrv: 62 + Math.round(Math.sin(i * 1.3) * 6) - (i < 3 ? 4 : 0),
+        restingHR: 48 + Math.round(Math.sin(i * 0.7) * 2) + (i < 3 ? 2 : 0),
         sleepSecs: 7 * 3600 + Math.round(Math.sin(i) * 1800)
       });
     }
-    w[w.length - 1].hrv = 55; // vandaag iets lagere HRV
+    w[w.length - 1].hrv = 55;
+
     var e = [{
       category: 'WORKOUT', type: 'Run', name: '6 x 800m @ 10K-tempo',
       description: 'Warming-up 15 min Z2\n6x 800m @ 10K-pace, 400m dribbelpauze\nCooling-down 10 min Z1',
       icu_training_load: 65
     }];
-    var a = [];
+
+    // Activiteiten over 2 weken
+    function act(daysAgo, type, name, load, dist, secs, extra) {
+      var base = {
+        type: type, name: name,
+        start_date_local: fmt(addDays(today, -daysAgo)) + 'T09:00:00',
+        icu_training_load: load, distance: dist, moving_time: secs
+      };
+      if (extra) Object.keys(extra).forEach(function (k) { base[k] = extra[k]; });
+      return base;
+    }
+    var a = [
+      // vorige week
+      act(dow + 7, 'Run', 'Duurloop Z2', 55, 10200, 3300, { icu_average_watts: 245, average_heartrate: 138, icu_zone_times: [420, 2400, 380, 100, 0] }),
+      act(dow + 6, 'WeightTraining', 'Kracht — benen', 38, null, 3000),
+      act(dow + 5, 'Walk', 'Lunchwandeling', null, 3000, 2100),
+      act(dow + 4, 'Run', 'Tempoloop', 72, 9000, 2700, { icu_average_watts: 272, average_heartrate: 158, icu_zone_times: [300, 700, 900, 700, 100] }),
+      act(dow + 2, 'Workout', 'Crossfit WOD', 58, null, 3600),
+      act(dow + 1, 'Run', 'Lange duurloop', 88, 16500, 5700, { icu_average_watts: 240, average_heartrate: 142, icu_zone_times: [500, 4200, 800, 200, 0] }),
+      // deze week
+      act(Math.min(dow, 5), 'Run', 'Rustige duurloop', 48, 8800, 3000, { icu_average_watts: 238, average_heartrate: 135, icu_zone_times: [500, 2200, 250, 50, 0] }),
+      act(Math.max(dow - 1, 0) === 0 && dow === 0 ? 99 : dow - 1, 'WeightTraining', 'Kracht — full body', 40, null, 3300),
+      act(Math.max(dow - 2, 0) === 0 && dow <= 1 ? 99 : dow - 2, 'Run', 'Intervallen 5x1000m', 78, 10100, 3060, { icu_average_watts: 268, average_heartrate: 155, icu_zone_times: [350, 800, 750, 950, 210] })
+    ].filter(function (x) {
+      var d = new Date(x.start_date_local.slice(0, 10) + 'T12:00:00');
+      return d >= prevMonday && d <= today;
+    });
+
     if (demoScenario >= 1) {
-      a.push({
-        type: 'Walk', name: 'Ochtendwandeling',
-        start_date_local: todayStr + 'T08:05:00',
-        distance: 3200, moving_time: 2400
-        // geen load → wordt geschat
-      });
+      a.push(act(0, 'Walk', 'Ochtendwandeling', null, 3200, 2400));
     }
     if (demoScenario >= 2) {
-      a.push({
-        type: 'Run', name: '6 x 800m @ 10K-tempo',
-        start_date_local: todayStr + 'T12:15:00',
-        distance: 9400, moving_time: 3120,
-        icu_training_load: 68, average_heartrate: 156
-      });
+      a.push(act(0, 'Run', '6 x 800m @ 10K-tempo', 68, 9400, 3120,
+        { icu_average_watts: 270, average_heartrate: 156, icu_zone_times: [360, 720, 700, 1080, 260] }));
     }
-    render(w, e, a, true);
+
+    state.wellness = w; state.events = e; state.activities = a; state.isDemo = true;
+    document.getElementById('errorBox').classList.add('hidden');
+    setTab(state.tab);
   }
 
   // ---------- Events ----------
@@ -597,14 +899,18 @@
   document.getElementById('demoToggle').addEventListener('click', function () { demoScenario = (demoScenario + 1) % 3; demoData(); });
   document.getElementById('settingsBtn').addEventListener('click', function () {
     document.getElementById('athleteId').value = read('icu_id') || '';
-    show('setupView');
+    showView('setupView');
   });
   document.getElementById('refreshBtn').addEventListener('click', function () {
-    if (read('icu_id') && read('icu_key')) loadData(); else show('setupView');
+    if (state.isDemo) { demoData(); return; }
+    if (read('icu_id') && read('icu_key')) loadData(); else showView('setupView');
+  });
+  document.querySelectorAll('.tabbar button').forEach(function (b) {
+    b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); });
   });
 
   // ---------- Start ----------
-  if (read('icu_id') && read('icu_key')) loadData(); else show('setupView');
+  if (read('icu_id') && read('icu_key')) loadData(); else showView('setupView');
 })();
 </script>
 </body>
