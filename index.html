@@ -83,7 +83,7 @@
     background: var(--card2); border-radius: 10px; padding: 12px;
     margin-bottom: 12px; font-size: 0.88rem;
   }
-  .planned .tag {
+  .planned .tag, .race .tag {
     display: inline-block; font-size: 0.68rem; font-weight: 700;
     background: rgba(96,165,250,0.18); color: var(--blue);
     padding: 2px 8px; border-radius: 20px; margin-bottom: 6px;
@@ -122,6 +122,8 @@
   .legend { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 14px; }
   .legend .item { display: flex; align-items: center; font-size: 0.75rem; color: var(--muted); }
   .legend .sw { width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+  .legend .line { width: 16px; height: 0; border-top: 2px solid; margin-right: 6px; }
+  .legend .line.dashed { border-top-style: dashed; }
   /* Week: trend rows */
   .trend {
     display: flex; align-items: center; padding: 12px 0;
@@ -148,7 +150,28 @@
   .zonebar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 10px; background: var(--card2); }
   .zonebar .z { height: 100%; }
   .zonelabel { font-size: 0.68rem; color: var(--muted); margin-top: 5px; }
-  .empty { color: var(--muted); font-size: 0.85rem; padding: 6px 0; }
+  .empty { color: var(--muted); font-size: 0.85rem; padding: 6px 0; line-height: 1.5; }
+  /* Seizoen */
+  .seasonchart { width: 100%; height: auto; display: block; }
+  .chartnote { font-size: 0.72rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+  .race {
+    display: flex; gap: 14px; align-items: center;
+    padding: 14px 0; border-bottom: 1px solid rgba(148,163,184,0.12);
+  }
+  .race:last-child { border-bottom: none; padding-bottom: 0; }
+  .race .race-days {
+    flex-shrink: 0; width: 64px; text-align: center;
+    background: var(--card2); border-radius: 12px; padding: 10px 4px;
+  }
+  .race .race-days .num { font-size: 1.4rem; font-weight: 700; }
+  .race .race-days .lbl { font-size: 0.65rem; color: var(--muted); }
+  .race .race-info { flex: 1; min-width: 0; }
+  .race .tag.prio-a { background: rgba(248,113,113,0.18); color: var(--red); }
+  .race .tag.prio-b { background: rgba(251,191,36,0.18); color: var(--orange); }
+  .race .tag.prio-c { background: rgba(148,163,184,0.18); color: var(--muted); }
+  .race .rname { font-weight: 600; font-size: 0.95rem; }
+  .race .rdate { font-size: 0.78rem; color: var(--muted); margin-top: 2px; text-transform: capitalize; }
+  .race .rform { font-size: 0.8rem; margin-top: 6px; font-weight: 600; }
   /* Tabs */
   .tabbar {
     position: fixed; bottom: 0; left: 0; right: 0;
@@ -159,8 +182,8 @@
     z-index: 10;
   }
   .tabbar button {
-    flex: 1; max-width: 160px; background: none; border: none;
-    color: var(--muted); font-size: 0.8rem; font-weight: 600;
+    flex: 1; max-width: 140px; background: none; border: none;
+    color: var(--muted); font-size: 0.78rem; font-weight: 600;
     padding: 10px 0; border-radius: 12px; cursor: pointer;
   }
   .tabbar button.active { color: var(--teal); background: rgba(45,212,191,0.1); }
@@ -283,6 +306,21 @@
     </div>
   </div>
 
+  <!-- PAGINA 3: SEIZOEN -->
+  <div id="seasonView" class="hidden">
+    <div class="card">
+      <h2>Fitness, vermoeidheid &amp; vorm — laatste 6 maanden</h2>
+      <div id="seasonChart"></div>
+      <div class="legend" id="seasonLegend"></div>
+      <div class="chartnote" id="seasonNote"></div>
+    </div>
+
+    <div class="card">
+      <h2>Aankomende wedstrijden</h2>
+      <div id="raceList"></div>
+    </div>
+  </div>
+
   <div id="loadingView" class="loading hidden">Gegevens laden…</div>
 </div>
 
@@ -290,6 +328,7 @@
 <nav class="tabbar" id="tabbar">
   <button data-tab="today" class="active"><span class="ticon">&#9737;</span>Vandaag</button>
   <button data-tab="week"><span class="ticon">&#9776;</span>Week</button>
+  <button data-tab="season"><span class="ticon">&#9873;</span>Seizoen</button>
 </nav>
 
 <script>
@@ -304,6 +343,7 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
   function addDays(d, n) { return new Date(d.getTime() + n * 86400000); }
+  function noon(dateStr) { return new Date(dateStr + 'T12:00:00'); }
   var today = new Date();
   var todayStr = fmt(today);
   var dow = (today.getDay() + 6) % 7; // 0 = maandag
@@ -317,8 +357,10 @@
   var demoScenario = 0;
 
   // ---------- Views ----------
+  var tabTitles = { today: 'Vandaag', week: 'Weektrends', season: 'Seizoen' };
+  var tabViews = { today: 'todayView', week: 'weekView', season: 'seasonView' };
   function showView(id) {
-    ['setupView', 'todayView', 'weekView', 'loadingView'].forEach(function (v) {
+    ['setupView', 'todayView', 'weekView', 'seasonView', 'loadingView'].forEach(function (v) {
       document.getElementById(v).classList.toggle('hidden', v !== id);
     });
     document.getElementById('tabbar').style.display = (id === 'setupView' || id === 'loadingView') ? 'none' : 'flex';
@@ -328,10 +370,12 @@
     document.querySelectorAll('.tabbar button').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-tab') === tab);
     });
-    document.getElementById('pageTitle').textContent = tab === 'today' ? 'Vandaag' : 'Weektrends';
+    document.getElementById('pageTitle').textContent = tabTitles[tab];
     if (state.wellness) {
-      showView(tab === 'today' ? 'todayView' : 'weekView');
-      if (tab === 'today') renderToday(); else renderWeek();
+      showView(tabViews[tab]);
+      if (tab === 'today') renderToday();
+      else if (tab === 'week') renderWeek();
+      else renderSeason();
     }
   }
 
@@ -349,12 +393,13 @@
 
   function loadData() {
     showView('loadingView');
-    var oldestW = fmt(addDays(today, -45));
-    var oldestA = fmt(prevMonday); // vanaf begin vorige week
+    var oldestW = fmt(addDays(today, -183));
+    var oldestA = fmt(prevMonday);
     var tomorrow = fmt(addDays(today, 1));
+    var farFuture = fmt(addDays(today, 300));
     Promise.all([
       apiGet('/wellness?oldest=' + oldestW + '&newest=' + todayStr),
-      apiGet('/events?oldest=' + todayStr + '&newest=' + todayStr),
+      apiGet('/events?oldest=' + todayStr + '&newest=' + farFuture),
       apiGet('/activities?oldest=' + oldestA + '&newest=' + tomorrow)
     ]).then(function (res) {
       state.wellness = res[0]; state.events = res[1]; state.activities = res[2]; state.isDemo = false;
@@ -362,7 +407,7 @@
       document.getElementById('demoBanner').classList.add('hidden');
       setTab(state.tab);
     }).catch(function (err) {
-      showView(state.tab === 'today' ? 'todayView' : 'weekView');
+      showView(tabViews[state.tab]);
       var box = document.getElementById('errorBox');
       box.classList.remove('hidden');
       var msg = 'Kon geen verbinding maken met intervals.icu (' + err.message + '). ';
@@ -372,7 +417,7 @@
         msg += 'Mogelijk blokkeert deze omgeving het verzoek (CORS/sandbox). Host het bestand zelf of open het lokaal in Safari.';
       }
       box.textContent = msg;
-      document.querySelectorAll('#todayView .card, #weekView .card').forEach(function (c) { c.classList.add('hidden'); });
+      document.querySelectorAll('#todayView .card, #weekView .card, #seasonView .card').forEach(function (c) { c.classList.add('hidden'); });
     });
   }
 
@@ -406,6 +451,10 @@
     var d = a.start_date_local || a.start_date || '';
     return String(d).slice(0, 10);
   }
+  function eventDate(e) {
+    var d = e.start_date_local || e.start_date || e.date || '';
+    return String(d).slice(0, 10);
+  }
 
   var loadPerHour = {
     'Walk': 15, 'Hike': 25, 'Yoga': 15, 'Ride': 45, 'VirtualRide': 45,
@@ -435,7 +484,6 @@
 
   var zoneColors = ['#64748b', '#34d399', '#fbbf24', '#fb923c', '#f87171', '#a78bfa', '#f472b6'];
 
-  // Zone-tijden robuust uitlezen (array van secs, of array van {id, secs})
   function zoneSecs(field) {
     if (!field) return null;
     if (Array.isArray(field)) {
@@ -448,11 +496,14 @@
     return null;
   }
 
+  function isRaceEvent(e) { return e.category && String(e.category).indexOf('RACE') === 0; }
+
   // =================================================
   // PAGINA 1: VANDAAG
   // =================================================
   function renderToday() {
-    var wellness = state.wellness.slice(), events = state.events, activities = state.activities;
+    var wellness = state.wellness.slice(), activities = state.activities;
+    var events = (state.events || []).filter(function (e) { return eventDate(e) === todayStr; });
     document.querySelectorAll('#todayView .card').forEach(function (c) { c.classList.remove('hidden'); });
     document.getElementById('demoBanner').classList.toggle('hidden', !state.isDemo);
     wellness.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
@@ -575,14 +626,14 @@
 
     var trainedForReal = doneLoad >= modT;
 
-    var planned = (events || []).filter(function (e) {
-      return e.category === 'WORKOUT' || (e.category && e.category.indexOf('RACE') === 0);
+    var planned = events.filter(function (e) {
+      return e.category === 'WORKOUT' || isRaceEvent(e);
     });
     var plannedBox = document.getElementById('plannedBox');
-    var isRace = planned.some(function (e) { return e.category && e.category.indexOf('RACE') === 0; });
+    var isRace = planned.some(isRaceEvent);
     if (planned.length && !trainedForReal) {
       plannedBox.innerHTML = planned.map(function (e) {
-        var tag = e.category && e.category.indexOf('RACE') === 0 ? 'Wedstrijd' : 'Gepland — ' + (e.type || 'workout');
+        var tag = isRaceEvent(e) ? 'Wedstrijd' : 'Gepland — ' + (e.type || 'workout');
         var load = e.icu_training_load ? ' &middot; load ~' + e.icu_training_load : '';
         return '<div class="planned"><span class="tag">' + tag + '</span>' +
           '<div class="wname">' + (e.name || 'Workout') + load + '</div>' +
@@ -676,7 +727,6 @@
 
     var dayNames = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
 
-    // --- Load per dag, gestapeld per sporttype ---
     var days = [];
     for (var i = 0; i < 7; i++) {
       days.push({ date: fmt(addDays(monday, i)), types: {}, total: 0 });
@@ -688,7 +738,7 @@
       var l = activityLoad(a).load;
       if (d >= fmt(monday) && d <= todayStr) {
         thisWeekTotal += l;
-        var idx = Math.round((new Date(d + 'T12:00:00') - monday) / 86400000);
+        var idx = Math.round((noon(d) - monday) / 86400000);
         if (idx >= 0 && idx < 7) {
           var g = typeGroup(a);
           days[idx].types[g] = (days[idx].types[g] || 0) + l;
@@ -697,8 +747,8 @@
         }
       } else if (d >= fmt(prevMonday) && d < fmt(monday)) {
         prevWeekTotal += l;
-        var pidx = Math.round((new Date(d + 'T12:00:00') - prevMonday) / 86400000);
-        if (pidx <= dow) prevWeekToDate += l; // zelfde dagen als deze week tot nu
+        var pidx = Math.round((noon(d) - prevMonday) / 86400000);
+        if (pidx <= dow) prevWeekToDate += l;
       }
     });
 
@@ -736,7 +786,6 @@
     }).join('');
     document.getElementById('loadLegend').innerHTML = legendHtml || '<span class="item">Nog geen activiteiten deze week</span>';
 
-    // --- Hersteltrends: laatste 7 dagen vs. 7 dagen ervoor ---
     var last14 = [];
     for (var j = 13; j >= 0; j--) {
       var ds = fmt(addDays(today, -j));
@@ -744,7 +793,7 @@
       wellness.forEach(function (r) { if (r.id === ds) rec = r; });
       last14.push(rec || {});
     }
-    function trendRow(name, field, unit, higherIsBetter, fmtFn) {
+    function trendRow(name, field, higherIsBetter, fmtFn) {
       var thisW = last14.slice(7).map(function (r) { return r[field] > 0 ? r[field] : null; }).filter(function (v) { return v != null; });
       var prevW = last14.slice(0, 7).map(function (r) { return r[field] > 0 ? r[field] : null; }).filter(function (v) { return v != null; });
       var aNow = avg(thisW), aPrev = avg(prevW);
@@ -767,18 +816,17 @@
         '<div class="tdelta" style="color:' + deltaColor + '">' + deltaStr + '</div></div></div>';
     }
     document.getElementById('trendRows').innerHTML =
-      trendRow('HRV', 'hrv', 'ms', true, function (v) { return Math.round(v) + ' ms'; }) +
-      trendRow('Rusthartslag', 'restingHR', 'bpm', false, function (v) { return Math.round(v) + ' bpm'; }) +
-      trendRow('Slaap', 'sleepSecs', '', true, function (v) { return hm(v); });
+      trendRow('HRV', 'hrv', true, function (v) { return Math.round(v) + ' ms'; }) +
+      trendRow('Rusthartslag', 'restingHR', false, function (v) { return Math.round(v) + ' bpm'; }) +
+      trendRow('Slaap', 'sleepSecs', true, function (v) { return hm(v); });
 
-    // --- Loopjes deze week: vermogen, pace, zones ---
     var runs = activities.filter(function (a) {
       var d = actDate(a);
       return (a.type === 'Run' || a.type === 'VirtualRun') && d >= fmt(monday) && d <= todayStr;
     }).sort(function (a, b) { return actDate(a) < actDate(b) ? 1 : -1; });
 
     var runHtml = runs.map(function (a) {
-      var dateLabel = new Date(actDate(a) + 'T12:00:00')
+      var dateLabel = noon(actDate(a))
         .toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
       var pace = a.distance && a.moving_time ? a.moving_time / (a.distance / 1000) : null;
       var watts = a.icu_average_watts || a.average_watts || null;
@@ -790,7 +838,6 @@
       var l = activityLoad(a);
       stats += '<span class="rstat"><b>' + Math.round(l.load) + '</b> <small>load</small></span>';
 
-      // Zones: eerst vermogenszones (Stryd), anders pace-zones, anders HR-zones
       var zones = zoneSecs(a.icu_zone_times);
       var zoneSource = 'vermogenszones';
       if (!zones) { zones = zoneSecs(a.pace_zone_times); zoneSource = 'pace-zones'; }
@@ -823,16 +870,202 @@
   }
 
   // =================================================
+  // PAGINA 3: SEIZOEN
+  // =================================================
+  function renderSeason() {
+    var wellness = state.wellness.slice();
+    var events = state.events || [];
+    document.querySelectorAll('#seasonView .card').forEach(function (c) { c.classList.remove('hidden'); });
+    document.getElementById('demoBanner').classList.toggle('hidden', !state.isDemo);
+    wellness.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
+
+    var recs = wellness.filter(function (r) { return r.ctl != null && r.atl != null; });
+
+    // --- Wedstrijden ---
+    var races = events.filter(function (e) { return isRaceEvent(e) && eventDate(e) >= todayStr; })
+      .sort(function (a, b) { return eventDate(a) < eventDate(b) ? -1 : 1; });
+
+    // --- Projectie richting eerstvolgende race (o.b.v. geplande workouts) ---
+    var proj = [];
+    var projTsbByDate = {};
+    if (recs.length) {
+      var lastRec = recs[recs.length - 1];
+      var horizon = 0;
+      races.forEach(function (r) {
+        var d = Math.round((noon(eventDate(r)) - noon(lastRec.id)) / 86400000);
+        if (d > 0 && d <= 56) horizon = Math.max(horizon, d);
+      });
+      if (horizon > 0) {
+        var plannedLoads = {};
+        events.forEach(function (e) {
+          if (e.category === 'WORKOUT' && e.icu_training_load > 0) {
+            var d = eventDate(e);
+            plannedLoads[d] = (plannedLoads[d] || 0) + e.icu_training_load;
+          }
+        });
+        var kC = 1 - Math.exp(-1 / 42), kA = 1 - Math.exp(-1 / 7);
+        var pc = lastRec.ctl, pa = lastRec.atl;
+        for (var i = 1; i <= horizon; i++) {
+          var ds = fmt(addDays(noon(lastRec.id), i));
+          var load = plannedLoads[ds] || 0;
+          pc += (load - pc) * kC;
+          pa += (load - pa) * kA;
+          proj.push({ id: ds, ctl: pc, atl: pa });
+          projTsbByDate[ds] = pc - pa;
+        }
+      }
+    }
+
+    // --- Grafiek ---
+    var chartBox = document.getElementById('seasonChart');
+    if (recs.length < 14) {
+      chartBox.innerHTML = '<div class="empty">Nog niet genoeg historie om een seizoensgrafiek te tonen (minimaal ~2 weken data nodig).</div>';
+      document.getElementById('seasonLegend').innerHTML = '';
+      document.getElementById('seasonNote').textContent = '';
+    } else {
+      var firstDate = noon(recs[0].id);
+      var lastPlot = proj.length ? proj[proj.length - 1].id : recs[recs.length - 1].id;
+      var totalDays = Math.max(1, Math.round((noon(lastPlot) - firstDate) / 86400000));
+      function off(dateStr) { return Math.round((noon(dateStr) - firstDate) / 86400000); }
+
+      var W = 360, H = 200, padT = 22, padB = 20, padL = 6, padR = 6;
+      var allVals = [];
+      recs.forEach(function (r) { allVals.push(r.ctl, r.atl, r.ctl - r.atl); });
+      proj.forEach(function (r) { allVals.push(r.ctl, r.atl, r.ctl - r.atl); });
+      var yMin = Math.min(0, Math.min.apply(null, allVals)) - 5;
+      var yMax = Math.max.apply(null, allVals) + 5;
+      function X(o) { return padL + o / totalDays * (W - padL - padR); }
+      function Y(v) { return padT + (yMax - v) / (yMax - yMin) * (H - padT - padB); }
+
+      function poly(data, fn) {
+        return data.map(function (r) { return X(off(r.id)).toFixed(1) + ',' + Y(fn(r)).toFixed(1); }).join(' ');
+      }
+      var ctlPts = poly(recs, function (r) { return r.ctl; });
+      var atlPts = poly(recs, function (r) { return r.atl; });
+      var tsbPts = poly(recs, function (r) { return r.ctl - r.atl; });
+
+      // Fill onder CTL
+      var firstX = X(off(recs[0].id)).toFixed(1), lastX = X(off(recs[recs.length - 1].id)).toFixed(1);
+      var bottomY = Y(yMin).toFixed(1);
+      var ctlArea = 'M' + firstX + ',' + bottomY + ' L' + ctlPts.split(' ').join(' L') + ' L' + lastX + ',' + bottomY + ' Z';
+
+      var svg = '<svg class="seasonchart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">';
+
+      // Nullijn
+      var y0 = Y(0);
+      svg += '<line x1="' + padL + '" y1="' + y0.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y0.toFixed(1) + '" stroke="#475569" stroke-width="1" stroke-dasharray="3,4"/>';
+      svg += '<text x="' + padL + '" y="' + (y0 - 4).toFixed(1) + '" fill="#64748b" font-size="8">0</text>';
+
+      // Maandlabels
+      var maanden = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+      for (var d = 0; d <= totalDays; d++) {
+        var dd = addDays(firstDate, d);
+        if (dd.getDate() === 1) {
+          var mx = X(d);
+          svg += '<line x1="' + mx.toFixed(1) + '" y1="' + padT + '" x2="' + mx.toFixed(1) + '" y2="' + (H - padB) + '" stroke="rgba(148,163,184,0.1)" stroke-width="1"/>';
+          svg += '<text x="' + (mx + 3).toFixed(1) + '" y="' + (H - 6) + '" fill="#64748b" font-size="8">' + maanden[dd.getMonth()] + '</text>';
+        }
+      }
+
+      // Vandaag-lijn
+      var tx = X(off(todayStr));
+      svg += '<line x1="' + tx.toFixed(1) + '" y1="' + padT + '" x2="' + tx.toFixed(1) + '" y2="' + (H - padB) + '" stroke="rgba(241,245,249,0.25)" stroke-width="1"/>';
+      svg += '<text x="' + (tx - 3).toFixed(1) + '" y="' + (padT - 8) + '" fill="#94a3b8" font-size="8" text-anchor="end">nu</text>';
+
+      // Data
+      svg += '<path d="' + ctlArea + '" fill="rgba(96,165,250,0.12)"/>';
+      svg += '<polyline points="' + atlPts + '" fill="none" stroke="var(--red)" stroke-width="1.3" opacity="0.75"/>';
+      svg += '<polyline points="' + ctlPts + '" fill="none" stroke="var(--blue)" stroke-width="2"/>';
+      svg += '<polyline points="' + tsbPts + '" fill="none" stroke="var(--teal)" stroke-width="1.8"/>';
+
+      // Projectie (gestippeld), verbonden aan laatste echte punt
+      if (proj.length) {
+        var projWithStart = [recs[recs.length - 1]].concat(proj);
+        svg += '<polyline points="' + poly(projWithStart, function (r) { return r.atl; }) + '" fill="none" stroke="var(--red)" stroke-width="1.3" opacity="0.6" stroke-dasharray="4,4"/>';
+        svg += '<polyline points="' + poly(projWithStart, function (r) { return r.ctl; }) + '" fill="none" stroke="var(--blue)" stroke-width="2" stroke-dasharray="4,4"/>';
+        svg += '<polyline points="' + poly(projWithStart, function (r) { return r.ctl - r.atl; }) + '" fill="none" stroke="var(--teal)" stroke-width="1.8" stroke-dasharray="4,4"/>';
+      }
+
+      // Wedstrijdmarkers
+      races.forEach(function (r) {
+        var o = off(eventDate(r));
+        if (o < 0 || o > totalDays) return;
+        var rx = X(o);
+        var letter = String(r.category).indexOf('RACE_A') === 0 ? 'A' : String(r.category).indexOf('RACE_B') === 0 ? 'B' : 'C';
+        svg += '<line x1="' + rx.toFixed(1) + '" y1="' + padT + '" x2="' + rx.toFixed(1) + '" y2="' + (H - padB) + '" stroke="var(--purple)" stroke-width="1" stroke-dasharray="2,3"/>';
+        svg += '<circle cx="' + rx.toFixed(1) + '" cy="' + (padT - 8) + '" r="7" fill="var(--purple)"/>';
+        svg += '<text x="' + rx.toFixed(1) + '" y="' + (padT - 5) + '" fill="#0f172a" font-size="9" font-weight="700" text-anchor="middle">' + letter + '</text>';
+      });
+
+      svg += '</svg>';
+      chartBox.innerHTML = svg;
+
+      document.getElementById('seasonLegend').innerHTML =
+        '<span class="item"><span class="line" style="border-color:var(--blue)"></span>Fitness (CTL)</span>' +
+        '<span class="item"><span class="line" style="border-color:var(--red)"></span>Vermoeidheid (ATL)</span>' +
+        '<span class="item"><span class="line" style="border-color:var(--teal)"></span>Vorm (TSB)</span>' +
+        (proj.length ? '<span class="item"><span class="line dashed" style="border-color:var(--muted)"></span>projectie</span>' : '') +
+        (races.length ? '<span class="item"><span class="sw" style="background:var(--purple);border-radius:50%"></span>wedstrijd</span>' : '');
+
+      document.getElementById('seasonNote').textContent = proj.length
+        ? 'De projectie na "nu" is gebaseerd op de geplande workouts in je intervals.icu-kalender; dagen zonder geplande workout tellen als rust.'
+        : '';
+    }
+
+    // --- Racelijst ---
+    var raceHtml = races.map(function (r) {
+      var d = eventDate(r);
+      var daysTo = Math.round((noon(d) - noon(todayStr)) / 86400000);
+      var daysLabel = daysTo === 0 ? 'vandaag!' : daysTo === 1 ? 'dag' : 'dagen';
+      var prio = String(r.category).indexOf('RACE_A') === 0 ? 'a' : String(r.category).indexOf('RACE_B') === 0 ? 'b' : 'c';
+      var dateLabel = noon(d).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+      var formHtml = '';
+      var pTsb = projTsbByDate[d];
+      if (pTsb != null) {
+        var fc, ft;
+        if (pTsb >= 25) { fc = 'var(--blue)'; ft = 'zeer fris — mogelijk iets fitness ingeleverd'; }
+        else if (pTsb >= 5) { fc = 'var(--green)'; ft = 'fris — goede racevorm'; }
+        else if (pTsb >= -5) { fc = 'var(--orange)'; ft = 'neutraal — overweeg iets meer taper'; }
+        else { fc = 'var(--red)'; ft = 'vermoeid — bouw meer rust in richting de race'; }
+        formHtml = '<div class="rform" style="color:' + fc + '">Verwachte vorm op racedag: ' +
+          (pTsb > 0 ? '+' : '') + Math.round(pTsb) + ' · ' + ft + '</div>';
+      } else if (daysTo > 56) {
+        formHtml = '<div class="rform" style="color:var(--muted)">Nog te ver weg voor een vormprojectie</div>';
+      }
+      var taperHtml = '';
+      if (daysTo > 0 && daysTo <= 14 && prio === 'a') {
+        taperHtml = '<div class="rform" style="color:var(--muted)">Tapertijd: verlaag het volume, houd wat intensiteit vast.</div>';
+      }
+
+      return '<div class="race">' +
+        '<div class="race-days"><div class="num">' + daysTo + '</div><div class="lbl">' + daysLabel + '</div></div>' +
+        '<div class="race-info"><span class="tag prio-' + prio + '">' + prio.toUpperCase() + '-race</span>' +
+        '<div class="rname">' + (r.name || 'Wedstrijd') + '</div>' +
+        '<div class="rdate">' + dateLabel + '</div>' + formHtml + taperHtml + '</div></div>';
+    }).join('');
+
+    document.getElementById('raceList').innerHTML = raceHtml ||
+      '<div class="empty">Geen wedstrijden gevonden in je kalender. Voeg ze toe op intervals.icu (categorie Race A, B of C) om hier je aftelling en verwachte vorm te zien.</div>';
+  }
+
+  // =================================================
   // DEMO DATA
   // =================================================
   function demoData() {
+    // 6 maanden wellness met opbouw + dipje (ziekte) rond dag -60
     var w = [];
-    for (var i = 44; i >= 0; i--) {
+    for (var i = 182; i >= 0; i--) {
+      var progress = (182 - i) / 182;
+      var ctl = 30 + 22 * progress + Math.sin(i / 9) * 1.5;
+      var atl = ctl + Math.sin(i / 3.1) * 9 + 4 * Math.sin(i / 11);
+      var dist = Math.abs(i - 60);
+      if (dist < 12) { ctl -= (12 - dist) * 0.8; atl -= (12 - dist) * 1.6; }
       var d = addDays(today, -i);
       w.push({
         id: fmt(d),
-        ctl: 42 + (44 - i) * 0.25 + Math.sin(i) * 1.5,
-        atl: 48 + Math.sin(i / 2) * 8 + (44 - i) * 0.2,
+        ctl: ctl,
+        atl: Math.max(atl, 5),
         hrv: 62 + Math.round(Math.sin(i * 1.3) * 6) - (i < 3 ? 4 : 0),
         restingHR: 48 + Math.round(Math.sin(i * 0.7) * 2) + (i < 3 ? 2 : 0),
         sleepSecs: 7 * 3600 + Math.round(Math.sin(i) * 1800)
@@ -840,11 +1073,30 @@
     }
     w[w.length - 1].hrv = 55;
 
+    // Events: workout vandaag + geplande workouts komende weken + 2 races
     var e = [{
       category: 'WORKOUT', type: 'Run', name: '6 x 800m @ 10K-tempo',
+      start_date_local: todayStr + 'T18:00:00',
       description: 'Warming-up 15 min Z2\n6x 800m @ 10K-pace, 400m dribbelpauze\nCooling-down 10 min Z1',
       icu_training_load: 65
     }];
+    for (var f = 1; f <= 20; f++) {
+      if (f % 2 === 0) {
+        e.push({
+          category: 'WORKOUT', type: 'Run', name: 'Geplande training',
+          start_date_local: fmt(addDays(today, f)) + 'T09:00:00',
+          icu_training_load: f <= 13 ? 60 : 30 // taper in laatste week
+        });
+      }
+    }
+    e.push({
+      category: 'RACE_A', type: 'Run', name: 'Stadsloop 10 km',
+      start_date_local: fmt(addDays(today, 21)) + 'T10:00:00'
+    });
+    e.push({
+      category: 'RACE_B', type: 'Run', name: 'Halve marathon',
+      start_date_local: fmt(addDays(today, 70)) + 'T09:30:00'
+    });
 
     // Activiteiten over 2 weken
     function act(daysAgo, type, name, load, dist, secs, extra) {
@@ -857,19 +1109,17 @@
       return base;
     }
     var a = [
-      // vorige week
       act(dow + 7, 'Run', 'Duurloop Z2', 55, 10200, 3300, { icu_average_watts: 245, average_heartrate: 138, icu_zone_times: [420, 2400, 380, 100, 0] }),
       act(dow + 6, 'WeightTraining', 'Kracht — benen', 38, null, 3000),
       act(dow + 5, 'Walk', 'Lunchwandeling', null, 3000, 2100),
       act(dow + 4, 'Run', 'Tempoloop', 72, 9000, 2700, { icu_average_watts: 272, average_heartrate: 158, icu_zone_times: [300, 700, 900, 700, 100] }),
       act(dow + 2, 'Workout', 'Crossfit WOD', 58, null, 3600),
       act(dow + 1, 'Run', 'Lange duurloop', 88, 16500, 5700, { icu_average_watts: 240, average_heartrate: 142, icu_zone_times: [500, 4200, 800, 200, 0] }),
-      // deze week
       act(Math.min(dow, 5), 'Run', 'Rustige duurloop', 48, 8800, 3000, { icu_average_watts: 238, average_heartrate: 135, icu_zone_times: [500, 2200, 250, 50, 0] }),
       act(Math.max(dow - 1, 0) === 0 && dow === 0 ? 99 : dow - 1, 'WeightTraining', 'Kracht — full body', 40, null, 3300),
       act(Math.max(dow - 2, 0) === 0 && dow <= 1 ? 99 : dow - 2, 'Run', 'Intervallen 5x1000m', 78, 10100, 3060, { icu_average_watts: 268, average_heartrate: 155, icu_zone_times: [350, 800, 750, 950, 210] })
     ].filter(function (x) {
-      var d = new Date(x.start_date_local.slice(0, 10) + 'T12:00:00');
+      var d = noon(x.start_date_local.slice(0, 10));
       return d >= prevMonday && d <= today;
     });
 
