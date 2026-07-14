@@ -87,8 +87,25 @@
     padding: 2px 8px; border-radius: 20px; margin-bottom: 6px;
     text-transform: uppercase; letter-spacing: 0.05em;
   }
+  .planned .tag.done {
+    background: rgba(52,211,153,0.18); color: var(--green);
+  }
+  .planned .tag.light {
+    background: rgba(148,163,184,0.18); color: var(--muted);
+  }
   .planned .wname { font-weight: 600; }
   .planned .wdesc { color: var(--muted); font-size: 0.8rem; margin-top: 4px; white-space: pre-line; }
+  .planned .wstats { color: var(--muted); font-size: 0.8rem; margin-top: 4px; }
+  .loadbar-wrap { margin-top: 14px; }
+  .loadbar-label {
+    display: flex; justify-content: space-between;
+    font-size: 0.72rem; color: var(--muted); margin-bottom: 5px;
+  }
+  .loadbar {
+    height: 8px; border-radius: 4px; background: var(--card2);
+    position: relative; overflow: hidden;
+  }
+  .loadbar .fill { height: 100%; border-radius: 4px; }
   /* Setup */
   .setup input {
     width: 100%; padding: 13px 14px; border-radius: 10px; border: 1px solid #334155;
@@ -113,6 +130,10 @@
     background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.35);
     color: #fde68a; border-radius: 10px; padding: 8px 12px; font-size: 0.78rem;
     margin-bottom: 14px; text-align: center;
+  }
+  .demo-banner button {
+    background: none; border: none; color: #fde68a; text-decoration: underline;
+    font-size: 0.78rem; cursor: pointer; margin-left: 6px;
   }
   .hidden { display: none; }
 </style>
@@ -149,7 +170,10 @@
 
   <!-- MAIN -->
   <div id="mainView" class="hidden">
-    <div id="demoBanner" class="demo-banner hidden">Voorbeelddata — nog niet gekoppeld aan jouw account</div>
+    <div id="demoBanner" class="demo-banner hidden">
+      Voorbeelddata — nog niet gekoppeld
+      <button id="demoToggle">wissel scenario</button>
+    </div>
     <div id="errorBox" class="error hidden"></div>
 
     <div class="card">
@@ -177,7 +201,9 @@
     </div>
 
     <div class="card advice" id="adviceCard">
-      <h2>Advies van de dag</h2>
+      <h2 id="adviceTitle">Advies van de dag</h2>
+      <div id="doneBox"></div>
+      <div id="loadbarBox"></div>
       <div id="plannedBox"></div>
       <div class="headline" id="adviceHeadline"></div>
       <p id="adviceText"></p>
@@ -193,7 +219,6 @@
   var mem = {};
   function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} mem[k] = v; }
   function read(k) { try { var v = localStorage.getItem(k); if (v !== null) return v; } catch (e) {} return mem[k] || null; }
-  function clearCreds() { try { localStorage.removeItem('icu_id'); localStorage.removeItem('icu_key'); } catch (e) {} delete mem.icu_id; delete mem.icu_key; }
 
   // ---------- Datum helpers ----------
   function fmt(d) {
@@ -225,11 +250,13 @@
   function loadData() {
     show('loadingView');
     var oldest = fmt(new Date(today.getTime() - 45 * 86400000));
+    var tomorrow = fmt(new Date(today.getTime() + 86400000));
     Promise.all([
       apiGet('/wellness?oldest=' + oldest + '&newest=' + todayStr),
-      apiGet('/events?oldest=' + todayStr + '&newest=' + todayStr)
+      apiGet('/events?oldest=' + todayStr + '&newest=' + todayStr),
+      apiGet('/activities?oldest=' + todayStr + '&newest=' + tomorrow)
     ]).then(function (res) {
-      render(res[0], res[1], false);
+      render(res[0], res[1], res[2], false);
     }).catch(function (err) {
       show('mainView');
       var box = document.getElementById('errorBox');
@@ -245,7 +272,7 @@
     });
   }
 
-  // ---------- Analyse & rendering ----------
+  // ---------- Helpers ----------
   function avg(arr) { return arr.length ? arr.reduce(function (a, b) { return a + b; }, 0) / arr.length : null; }
 
   function baseline(records, field, excludeDate) {
@@ -259,8 +286,38 @@
     var h = Math.floor(secs / 3600), m = Math.round((secs % 3600) / 60);
     return h + 'u' + String(m).padStart(2, '0');
   }
+  function durShort(secs) {
+    if (secs == null) return '';
+    var h = Math.floor(secs / 3600), m = Math.round((secs % 3600) / 60);
+    return h > 0 ? h + 'u' + String(m).padStart(2, '0') : m + ' min';
+  }
+  function km(meters) {
+    return meters != null && meters > 0 ? (meters / 1000).toFixed(1).replace('.', ',') + ' km' : '';
+  }
 
-  function render(wellness, events, isDemo) {
+  // Load schatten als intervals.icu er geen heeft berekend (bijv. wandeling zonder HR)
+  var loadPerHour = {
+    'Walk': 15, 'Hike': 25, 'Yoga': 15, 'Ride': 45, 'VirtualRide': 45,
+    'Run': 60, 'VirtualRun': 60, 'WeightTraining': 35, 'Workout': 40, 'Swim': 50
+  };
+  function activityLoad(a) {
+    if (a.icu_training_load != null && a.icu_training_load > 0) {
+      return { load: a.icu_training_load, estimated: false };
+    }
+    var secs = a.moving_time || a.elapsed_time;
+    if (!secs) return { load: 0, estimated: true };
+    var perHour = loadPerHour[a.type] || 30;
+    return { load: Math.round(secs / 3600 * perHour), estimated: true };
+  }
+
+  var typeNames = {
+    'Walk': 'Wandeling', 'Hike': 'Hike', 'Ride': 'Fietsrit', 'VirtualRide': 'Fietsrit (indoor)',
+    'Run': 'Hardlopen', 'VirtualRun': 'Hardlopen (indoor)', 'WeightTraining': 'Kracht',
+    'Workout': 'Workout', 'Yoga': 'Yoga', 'Swim': 'Zwemmen'
+  };
+
+  // ---------- Rendering ----------
+  function render(wellness, events, activities, isDemo) {
     show('mainView');
     document.getElementById('errorBox').classList.add('hidden');
     document.querySelectorAll('#mainView .card').forEach(function (c) { c.classList.remove('hidden'); });
@@ -301,7 +358,7 @@
 
     var flags = 0;
     var sigHtml = '';
-    function addSignal(name, todayVal, baseVal, unit, status, note) {
+    function addSignal(name, todayVal, baseVal, status, note) {
       var color = status === 'ok' ? 'var(--green)' : status === 'warn' ? 'var(--orange)' : status === 'bad' ? 'var(--red)' : 'var(--muted)';
       sigHtml += '<div class="signal">' +
         '<span class="dot" style="background:' + color + '"></span>' +
@@ -318,10 +375,10 @@
       var st = ratio >= 0.95 ? 'ok' : ratio >= 0.90 ? 'warn' : 'bad';
       if (st === 'warn') flags += 1;
       if (st === 'bad') flags += 2;
-      addSignal('HRV', Math.round(hrvToday) + ' ms', 'baseline ' + Math.round(hrvBase) + ' ms', '',
+      addSignal('HRV', Math.round(hrvToday) + ' ms', 'baseline ' + Math.round(hrvBase) + ' ms',
         st, st === 'ok' ? 'op of boven je baseline' : st === 'warn' ? 'iets onder je baseline' : 'duidelijk onder je baseline');
     } else {
-      addSignal('HRV', '–', hrvBase ? 'baseline ' + Math.round(hrvBase) + ' ms' : 'onvoldoende data', '', 'none', 'geen meting vandaag');
+      addSignal('HRV', '–', hrvBase ? 'baseline ' + Math.round(hrvBase) + ' ms' : 'onvoldoende data', 'none', 'geen meting vandaag');
     }
 
     // Rusthartslag
@@ -332,10 +389,10 @@
       var st2 = rr <= 1.04 ? 'ok' : rr <= 1.08 ? 'warn' : 'bad';
       if (st2 === 'warn') flags += 1;
       if (st2 === 'bad') flags += 2;
-      addSignal('Rusthartslag', Math.round(rhrToday) + ' bpm', 'baseline ' + Math.round(rhrBase) + ' bpm', '',
+      addSignal('Rusthartslag', Math.round(rhrToday) + ' bpm', 'baseline ' + Math.round(rhrBase) + ' bpm',
         st2, st2 === 'ok' ? 'normaal' : st2 === 'warn' ? 'licht verhoogd' : 'duidelijk verhoogd');
     } else {
-      addSignal('Rusthartslag', '–', rhrBase ? 'baseline ' + Math.round(rhrBase) + ' bpm' : 'onvoldoende data', '', 'none', 'geen meting vandaag');
+      addSignal('Rusthartslag', '–', rhrBase ? 'baseline ' + Math.round(rhrBase) + ' bpm' : 'onvoldoende data', 'none', 'geen meting vandaag');
     }
 
     // Slaap
@@ -345,13 +402,67 @@
       var st3 = 'ok';
       if (slToday < 6 * 3600) { st3 = 'warn'; flags += 1; }
       else if (slBase && slToday < slBase * 0.8) { st3 = 'warn'; flags += 1; }
-      addSignal('Slaap', hm(slToday), slBase ? 'gemiddeld ' + hm(slBase) : '', '',
+      addSignal('Slaap', hm(slToday), slBase ? 'gemiddeld ' + hm(slBase) : '',
         st3, st3 === 'ok' ? 'voldoende' : 'korter dan normaal');
     } else {
-      addSignal('Slaap', '–', slBase ? 'gemiddeld ' + hm(slBase) : 'onvoldoende data', '', 'none', 'geen meting vandaag');
+      addSignal('Slaap', '–', slBase ? 'gemiddeld ' + hm(slBase) : 'onvoldoende data', 'none', 'geen meting vandaag');
     }
 
     document.getElementById('signals').innerHTML = sigHtml;
+
+    // --- Voltooide activiteiten vandaag ---
+    var done = (activities || []).filter(function (a) {
+      var d = a.start_date_local || a.start_date || '';
+      return String(d).indexOf(todayStr) === 0;
+    });
+    var doneLoad = 0, anyEstimated = false;
+    done.forEach(function (a) {
+      var l = activityLoad(a);
+      a._load = l.load;
+      a._estimated = l.estimated;
+      doneLoad += l.load;
+      if (l.estimated && l.load > 0) anyEstimated = true;
+    });
+
+    // Drempels relatief aan je fitness (CTL = je gemiddelde dagelijkse load)
+    var heavyT = ctl != null && ctl > 20 ? Math.round(ctl * 1.3) : 90;
+    var modT = ctl != null && ctl > 20 ? Math.round(ctl * 0.6) : 40;
+
+    var doneBox = document.getElementById('doneBox');
+    if (done.length) {
+      doneBox.innerHTML = done.map(function (a) {
+        var stats = [];
+        if (a.distance) stats.push(km(a.distance));
+        if (a.moving_time) stats.push(durShort(a.moving_time));
+        if (a._load > 0) stats.push('load ' + Math.round(a._load) + (a._estimated ? ' (geschat)' : ''));
+        if (a.average_heartrate || a.icu_average_hr) stats.push('gem. HR ' + Math.round(a.average_heartrate || a.icu_average_hr));
+        var isLight = a._load < modT * 0.6;
+        var typeName = typeNames[a.type] || a.type || 'activiteit';
+        return '<div class="planned"><span class="tag ' + (isLight ? 'light' : 'done') + '">&#10003; ' + typeName + '</span>' +
+          '<div class="wname">' + (a.name || 'Activiteit') + '</div>' +
+          (stats.length ? '<div class="wstats">' + stats.join(' &middot; ') + '</div>' : '') +
+          '</div>';
+      }).join('');
+    } else {
+      doneBox.innerHTML = '';
+    }
+
+    // Belastingsbalkje: hoeveel van een "normale trainingsdag" zit erop?
+    var loadbarBox = document.getElementById('loadbarBox');
+    if (done.length && ctl != null && ctl > 20) {
+      var pct = Math.min(100, Math.round(doneLoad / heavyT * 100));
+      var barColor = doneLoad >= heavyT ? 'var(--red)' : doneLoad >= modT ? 'var(--green)' : 'var(--muted)';
+      loadbarBox.innerHTML =
+        '<div class="loadbar-wrap"><div class="loadbar-label">' +
+        '<span>Belasting vandaag: ' + Math.round(doneLoad) + '</span>' +
+        '<span>normale dag &asymp; ' + Math.round(ctl) + ' &middot; zwaar vanaf ' + heavyT + '</span></div>' +
+        '<div class="loadbar"><div class="fill" style="width:' + pct + '%;background:' + barColor + '"></div></div></div>';
+    } else {
+      loadbarBox.innerHTML = '';
+    }
+
+    // Heeft de "echte" training al plaatsgevonden, of alleen lichte activiteit?
+    var trainedForReal = doneLoad >= modT;
 
     // --- Geplande workout ---
     var planned = (events || []).filter(function (e) {
@@ -359,7 +470,7 @@
     });
     var plannedBox = document.getElementById('plannedBox');
     var isRace = planned.some(function (e) { return e.category && e.category.indexOf('RACE') === 0; });
-    if (planned.length) {
+    if (planned.length && !trainedForReal) {
       plannedBox.innerHTML = planned.map(function (e) {
         var tag = e.category && e.category.indexOf('RACE') === 0 ? 'Wedstrijd' : 'Gepland — ' + (e.type || 'workout');
         var load = e.icu_training_load ? ' &middot; load ~' + e.icu_training_load : '';
@@ -374,33 +485,55 @@
 
     // --- Advies ---
     var head = '', text = '', color = 'var(--green)';
-    if (isRace) {
-      if (flags >= 2) { color = 'var(--orange)'; head = 'Wedstrijddag — maar je lichaam geeft signalen'; text = 'Je readiness wijkt af van je baseline. Start rustig, luister onderweg goed naar je lichaam en stel je doel zo nodig bij.'; }
-      else { color = 'var(--green)'; head = 'Wedstrijddag — je bent er klaar voor'; text = 'Je readiness ziet er goed uit. Vertrouw op je voorbereiding en veel succes!'; }
-    } else if (planned.length) {
-      if (flags >= 3 || (tsb != null && tsb < -25)) {
-        color = 'var(--red)'; head = 'Overweeg de geplande training te vervangen';
-        text = 'Meerdere signalen wijzen op onvoldoende herstel. Vervang de geplande training door een rustdag of een zeer rustige hersteltraining (zone 1). De workout loopt niet weg.';
-      } else if (flags >= 1 || (tsb != null && tsb < -15)) {
-        color = 'var(--orange)'; head = 'Geplande training kan, maar temper de intensiteit';
-        text = 'Je herstel is niet optimaal. Voer de training uit maar houd het gecontroleerd: verlaag het tempo of schrap een interval als het zwaar voelt.';
+    document.getElementById('adviceTitle').textContent = trainedForReal ? 'Vandaag getraind' : 'Advies van de dag';
+
+    if (trainedForReal) {
+      // Volwaardige training gedaan → hersteladvies
+      if (doneLoad >= heavyT || (tsb != null && tsb < -20)) {
+        color = 'var(--orange)';
+        head = 'Training gedaan — focus nu op herstel';
+        text = 'Met een belasting van ' + Math.round(doneLoad) + ' was dit een zware dag voor jouw niveau. Rest van de dag: goed eten, voldoende drinken en op tijd naar bed. Geen tweede sessie meer vandaag.';
       } else {
-        color = 'var(--green)'; head = 'Groen licht voor je geplande training';
-        text = 'Je readiness en vormbalans zien er goed uit. Voer de training uit zoals gepland.';
+        color = 'var(--green)';
+        head = 'Training gedaan — lekker bezig';
+        text = 'Je zit hiermee goed voor vandaag. Verder trainen is niet nodig; als je nog energie over hebt, houd het dan bij een wandeling of wat rekwerk.';
+      }
+      if (planned.length) {
+        text += ' Let op: er staat vandaag ook nog een geplande workout in je agenda (' + (planned[0].name || 'workout') + '). Als dit dezelfde sessie was, kun je die negeren.';
       }
     } else {
-      if (flags >= 3 || (tsb != null && tsb < -25)) {
-        color = 'var(--red)'; head = 'Vandaag: rust of licht herstel';
-        text = 'Je lichaam vraagt om herstel. Neem een rustdag, of doe hooguit een korte wandeling of mobiliteitswerk.';
-      } else if (flags >= 1 || (tsb != null && tsb < -10)) {
-        color = 'var(--orange)'; head = 'Vandaag: rustige duurloop of licht krachtwerk';
-        text = 'Je draagt vermoeidheid mee. Een rustige duurloop in zone 2 of een lichte krachtsessie past het beste. Bewaar intensiteit voor een frissere dag.';
-      } else if (tsb != null && tsb >= 5) {
-        color = 'var(--green)'; head = 'Vandaag: ruimte voor kwaliteit';
-        text = 'Je bent fris. Een goede dag voor een intensieve sessie: intervallen, tempoloop of een pittige crossfit-workout.';
+      // Nog niet (echt) getraind → normaal advies, eventueel met vermelding lichte activiteit
+      var lightNote = done.length
+        ? ' Je lichte activiteit van vandaag (load ' + Math.round(doneLoad) + ') telt mee, maar laat nog ruimte voor een echte training.'
+        : '';
+      if (isRace) {
+        if (flags >= 2) { color = 'var(--orange)'; head = 'Wedstrijddag — maar je lichaam geeft signalen'; text = 'Je readiness wijkt af van je baseline. Start rustig, luister onderweg goed naar je lichaam en stel je doel zo nodig bij.'; }
+        else { color = 'var(--green)'; head = 'Wedstrijddag — je bent er klaar voor'; text = 'Je readiness ziet er goed uit. Vertrouw op je voorbereiding en veel succes!'; }
+      } else if (planned.length) {
+        if (flags >= 3 || (tsb != null && tsb < -25)) {
+          color = 'var(--red)'; head = 'Overweeg de geplande training te vervangen';
+          text = 'Meerdere signalen wijzen op onvoldoende herstel. Vervang de geplande training door een rustdag of een zeer rustige hersteltraining (zone 1). De workout loopt niet weg.';
+        } else if (flags >= 1 || (tsb != null && tsb < -15)) {
+          color = 'var(--orange)'; head = 'Geplande training kan, maar temper de intensiteit';
+          text = 'Je herstel is niet optimaal. Voer de training uit maar houd het gecontroleerd: verlaag het tempo of schrap een interval als het zwaar voelt.' + lightNote;
+        } else {
+          color = 'var(--green)'; head = 'Groen licht voor je geplande training';
+          text = 'Je readiness en vormbalans zien er goed uit. Voer de training uit zoals gepland.' + lightNote;
+        }
       } else {
-        color = 'var(--teal)'; head = 'Vandaag: normale training mogelijk';
-        text = 'Je bent in balans. Een duurloop, krachttraining of — als je je goed voelt — een kwaliteitssessie past allemaal binnen je huidige belasting.';
+        if (flags >= 3 || (tsb != null && tsb < -25)) {
+          color = 'var(--red)'; head = 'Vandaag: rust of licht herstel';
+          text = 'Je lichaam vraagt om herstel. Neem een rustdag, of doe hooguit een korte wandeling of mobiliteitswerk.' + (done.length ? ' De activiteit die je al deed is daarvoor prima — houd het daarbij.' : '');
+        } else if (flags >= 1 || (tsb != null && tsb < -10)) {
+          color = 'var(--orange)'; head = 'Vandaag: rustige duurloop of licht krachtwerk';
+          text = 'Je draagt vermoeidheid mee. Een rustige duurloop in zone 2 of een lichte krachtsessie past het beste. Bewaar intensiteit voor een frissere dag.' + lightNote;
+        } else if (tsb != null && tsb >= 5) {
+          color = 'var(--green)'; head = 'Vandaag: ruimte voor kwaliteit';
+          text = 'Je bent fris. Een goede dag voor een intensieve sessie: intervallen, tempoloop of een pittige crossfit-workout.' + lightNote;
+        } else {
+          color = 'var(--teal)'; head = 'Vandaag: normale training mogelijk';
+          text = 'Je bent in balans. Een duurloop, krachttraining of — als je je goed voelt — een kwaliteitssessie past allemaal binnen je huidige belasting.' + lightNote;
+        }
       }
     }
     var adviceCard = document.getElementById('adviceCard');
@@ -411,6 +544,7 @@
   }
 
   // ---------- Demo data ----------
+  var demoScenario = 0; // 0 = niets, 1 = alleen wandeling, 2 = wandeling + intervaltraining
   function demoData() {
     var w = [];
     for (var i = 44; i >= 0; i--) {
@@ -430,7 +564,24 @@
       description: 'Warming-up 15 min Z2\n6x 800m @ 10K-pace, 400m dribbelpauze\nCooling-down 10 min Z1',
       icu_training_load: 65
     }];
-    render(w, e, true);
+    var a = [];
+    if (demoScenario >= 1) {
+      a.push({
+        type: 'Walk', name: 'Ochtendwandeling',
+        start_date_local: todayStr + 'T08:05:00',
+        distance: 3200, moving_time: 2400
+        // geen load → wordt geschat
+      });
+    }
+    if (demoScenario >= 2) {
+      a.push({
+        type: 'Run', name: '6 x 800m @ 10K-tempo',
+        start_date_local: todayStr + 'T12:15:00',
+        distance: 9400, moving_time: 3120,
+        icu_training_load: 68, average_heartrate: 156
+      });
+    }
+    render(w, e, a, true);
   }
 
   // ---------- Events ----------
@@ -442,7 +593,8 @@
     store('icu_key', key);
     loadData();
   });
-  document.getElementById('demoBtn').addEventListener('click', demoData);
+  document.getElementById('demoBtn').addEventListener('click', function () { demoScenario = 0; demoData(); });
+  document.getElementById('demoToggle').addEventListener('click', function () { demoScenario = (demoScenario + 1) % 3; demoData(); });
   document.getElementById('settingsBtn').addEventListener('click', function () {
     document.getElementById('athleteId').value = read('icu_id') || '';
     show('setupView');
