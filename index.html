@@ -311,7 +311,7 @@
   <!-- PAGINA 3: SEIZOEN -->
   <div id="seasonView" class="hidden">
     <div class="card">
-      <h2>Fitness, vermoeidheid &amp; vorm — laatste 6 maanden</h2>
+      <h2>Fitness, vermoeidheid &amp; vorm</h2>
       <div id="seasonChart"></div>
       <div class="legend" id="seasonLegend"></div>
       <div class="chartnote" id="seasonNote"></div>
@@ -395,7 +395,7 @@
 
   function loadData() {
     showView('loadingView');
-    var oldestW = fmt(addDays(today, -183));
+    var oldestW = fmt(addDays(today, -122));
     var oldestA = fmt(prevMonday);
     var tomorrow = fmt(addDays(today, 1));
     var farFuture = fmt(addDays(today, 300));
@@ -898,7 +898,8 @@
     document.getElementById('demoBanner').classList.toggle('hidden', !state.isDemo);
     wellness.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
 
-    var recs = wellness.filter(function (r) { return r.ctl != null && r.atl != null; });
+    var seasonStart = fmt(addDays(today, -122));
+    var recs = wellness.filter(function (r) { return r.ctl != null && r.atl != null && r.id >= seasonStart; });
 
     // --- Wedstrijden ---
     var races = events.filter(function (e) { return isRaceEvent(e) && eventDate(e) >= todayStr; })
@@ -907,7 +908,7 @@
     // --- Projectie: vaste 4 weken vooruit (o.b.v. geplande workouts) ---
     var proj = [];
     var projTsbByDate = {};
-    var PROJECTION_DAYS = 28;
+    var PROJECTION_DAYS = 14;
     if (recs.length) {
       var lastRec = recs[recs.length - 1];
       var plannedLoads = {};
