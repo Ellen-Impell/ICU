@@ -314,7 +314,6 @@
       <h2>Fitness, vermoeidheid &amp; vorm</h2>
       <div id="seasonChart"></div>
       <div class="legend" id="seasonLegend"></div>
-      <div class="chartnote" id="seasonNote"></div>
     </div>
 
     <div class="card">
@@ -485,7 +484,7 @@
   };
   function typeGroup(a) { return typeNames[a.type] || 'Overig'; }
 
-  var zoneColors = ['#64748b', '#34d399', '#fbbf24', '#fb923c', '#f87171', '#a78bfa', '#f472b6'];
+  var zoneColors = ['#7dd3fc', '#34d399', '#fbbf24', '#fb923c', '#f87171', '#a78bfa', '#f472b6'];
 
   function zoneSecs(field) {
     if (!field) return null;
@@ -908,7 +907,7 @@
     // --- Projectie: vaste 4 weken vooruit (o.b.v. geplande workouts) ---
     var proj = [];
     var projTsbByDate = {};
-    var PROJECTION_DAYS = 14;
+    var PROJECTION_DAYS = 21;
     if (recs.length) {
       var lastRec = recs[recs.length - 1];
       var plannedLoads = {};
@@ -935,7 +934,6 @@
     if (recs.length < 14) {
       chartBox.innerHTML = '<div class="empty">Nog niet genoeg historie om een seizoensgrafiek te tonen (minimaal ~2 weken data nodig).</div>';
       document.getElementById('seasonLegend').innerHTML = '';
-      document.getElementById('seasonNote').textContent = '';
     } else {
       var firstDate = noon(recs[0].id);
       var lastPlot = proj.length ? proj[proj.length - 1].id : recs[recs.length - 1].id;
@@ -1009,9 +1007,6 @@
         '<span class="item"><span class="line" style="border-color:var(--teal)"></span>Vorm (TSB)</span>' +
         (proj.length ? '<span class="item"><span class="line dashed" style="border-color:var(--muted)"></span>projectie</span>' : '');
 
-      document.getElementById('seasonNote').textContent = proj.length
-        ? 'De projectie na "nu" is gebaseerd op de geplande workouts in je intervals.icu-kalender; dagen zonder geplande workout tellen als rust.'
-        : '';
     }
 
     // --- Racelijst ---
@@ -1032,8 +1027,6 @@
         else { fc = 'var(--red)'; ft = 'vermoeid — bouw meer rust in richting de race'; }
         formHtml = '<div class="rform" style="color:' + fc + '">Verwachte vorm op racedag: ' +
           (pTsb > 0 ? '+' : '') + Math.round(pTsb) + ' · ' + ft + '</div>';
-      } else if (daysTo > PROJECTION_DAYS) {
-        formHtml = '<div class="rform" style="color:var(--muted)">Nog te ver weg voor een vormprojectie (projectie loopt ' + PROJECTION_DAYS + ' dagen vooruit)</div>';
       }
       var taperHtml = '';
       if (daysTo > 0 && daysTo <= 14 && prio === 'a') {
